@@ -507,12 +507,12 @@ class Enhance extends Module
             $existing_org_id_obj = $this->ModuleClientMeta->get(
                 $vars['client_id'],
                 'enhance_org_id',
-                $row->id
+                $row->module_id
             );
             $existing_login_id_obj = $this->ModuleClientMeta->get(
                 $vars['client_id'],
                 'enhance_login_id',
-                $row->id
+                $row->module_id
             );
 
             // Extract values from objects (ModuleClientMeta returns objects with ->value property)
@@ -622,7 +622,7 @@ class Enhance extends Module
                 if (!$existing_org_id && $customer_org_id && isset($response['login_id'])) {
                     $this->ModuleClientMeta->set(
                         $vars['client_id'],
-                        $row->id,
+                        $row->module_id,
                         0,
                         [
                             ['key' => 'enhance_org_id', 'value' => $customer_org_id, 'encrypted' => 0],
@@ -1326,7 +1326,7 @@ class Enhance extends Module
                     $existing_login_id_obj = $this->ModuleClientMeta->get(
                         $service->client_id,
                         'enhance_login_id',
-                        $row->id
+                        $row->module_id
                     );
 
                     if (isset($existing_login_id_obj->value)) {
@@ -1415,7 +1415,7 @@ class Enhance extends Module
                     $existing_login_id_obj = $this->ModuleClientMeta->get(
                         $service->client_id,
                         'enhance_login_id',
-                        $row->id
+                        $row->module_id
                     );
 
                     if (isset($existing_login_id_obj->value)) {
