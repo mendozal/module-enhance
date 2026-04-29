@@ -755,6 +755,78 @@ class Enhance extends Module
     }
 
     /**
+     * Updates the package for the service on the remote server. Sets Input errors on failure,
+     * preventing the service's package from being changed.
+     *
+     * @param stdClass $package_from A stdClass object representing the current package
+     * @param stdClass $package_to A stdClass object representing the new package
+     * @param stdClass $service A stdClass object representing the current service
+     * @param stdClass $parent_package A stdClass object representing the parent
+     *  service's selected package (if the current service is an addon service)
+     * @param stdClass $parent_service A stdClass object representing the parent
+     *  service of the service being changed (if the current service is an addon service)
+     * @return mixed null to maintain the existing meta fields
+     * @see Module::getModule()
+     * @see Module::getModuleRow()
+     */
+    public function changeServicePackage(
+        $package_from,
+        $package_to,
+        $service,
+        $parent_package = null,
+        $parent_service = null
+    ) {
+        if (($row = $this->getModuleRow())) {
+            // Only update the subscription if the plan has changed
+            if ($package_from->meta->package != $package_to->meta->package) {
+                $api = $this->getApi(
+                    $row->meta->server_label,
+                    $row->meta->hostname,
+                    $row->meta->org_id,
+                    $row->meta->api_token
+                );
+
+                $service_fields = $this->serviceFieldsToObject($service->fields);
+
+                // Resolve customer_org_id from service fields, falling back to ModuleClientMeta
+                $customer_org_id = isset($service_fields->customer_org_id) ? $service_fields->customer_org_id : null;
+                if (!$customer_org_id) {
+                    if (!isset($this->ModuleClientMeta)) {
+                        Loader::loadModels($this, ['ModuleClientMeta']);
+                    }
+                    $meta = $this->ModuleClientMeta->get($service->client_id, 'enhance_org_id', $row->module_id);
+                    $customer_org_id = $meta ? $meta->value : null;
+                }
+
+                if (isset($customer_org_id) && isset($service_fields->subscription_id)) {
+                    $this->log($row->meta->hostname . '|changeServicePackage', 'Changing subscription: ' . $service_fields->subscription_id . ' to plan: ' . $package_to->meta->package, 'input', true);
+
+                    $response = $api->updateCustomerSubscription(
+                        $customer_org_id,
+                        $service_fields->subscription_id,
+                        ['planId' => intval($package_to->meta->package)]
+                    );
+
+                    $success = false;
+
+                    if (($errors = $response->errors())) {
+                        $this->Input->setErrors(['api' => $errors]);
+                    } else {
+                        $success = true;
+                    }
+
+                    $this->log($row->meta->hostname . '|changeServicePackage', 'Change package result: ' . ($success ? 'success' : 'failed'), 'output', $success);
+                } else {
+                    $this->log($row->meta->hostname . '|changeServicePackage', 'Missing customer_org_id or subscription_id', 'output', false);
+                    $this->Input->setErrors(['api' => ['Missing required service fields for package change']]);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Suspends the service on the remote server. Sets Input errors on failure,
      * preventing the service from being suspended.
      *
